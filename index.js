@@ -28,6 +28,8 @@ module.exports = function(audioContext, stream, opts) {
     options[key] = opts.hasOwnProperty(key) ? opts[key] : defaults[key];
   }
 
+  var frame = 0
+
   var baseLevel = 0;
   var voiceScale = 1;
   var activityCounter = 0;
@@ -40,6 +42,26 @@ module.exports = function(audioContext, stream, opts) {
   var prevVadState = undefined;
   var vadState = false;
   var captureTimeout = null;
+
+  class Source {
+    constructor(bitArray) {
+      this.bitArray = bitArray
+      this.active = true
+    }
+    connect(analyser) {
+      this.active = true
+      for(let i = 0; i < this.bitArray.length; i++) {
+        if(!this.active) {
+          break;
+        }
+        analyser.dispatchEvent(this.bitArray[i])
+      }
+      return
+    }
+    disconnect() {
+      this.active = false
+    }
+  }
 
   var source = audioContext.createMediaStreamSource(stream);
   var analyser = audioContext.createAnalyser();
@@ -116,12 +138,12 @@ module.exports = function(audioContext, stream, opts) {
     options.onUpdate(Math.max(0, average - baseLevel) / voiceScale);
   }
 
-  function onVoiceStart() {
-    options.onVoiceStart();
+  function onVoiceStart(data) {
+    options.onVoiceStart(data);
   }
 
-  function onVoiceStop() {
-    options.onVoiceStop();
+  function onVoiceStop(data) {
+    options.onVoiceStop(data);
   }
 
   return {connect: connect, disconnect: disconnect, destroy: destroy};
